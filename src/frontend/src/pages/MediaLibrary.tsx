@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Image as ImageIcon,
   Loader2,
+  LogIn,
   Play,
   Trash2,
   Upload,
@@ -23,13 +24,13 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { MediaType } from "../backend";
 import type { MediaItem } from "../backend";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAddMediaItem,
   useDeleteMediaItem,
   useMediaItems,
 } from "../hooks/useQueries";
 
-// ─── Video thumbnail with play overlay ───────────────────────────────────────
 function VideoThumbnail({
   item,
   onClick,
@@ -43,26 +44,28 @@ function VideoThumbnail({
     >
       <div
         className="w-full h-full flex items-center justify-center"
-        style={{ backgroundColor: "oklch(0.10 0.02 248)" }}
+        style={{ backgroundColor: "oklch(0.10 0.035 258)" }}
       >
         <Video size={28} className="text-muted-foreground" />
       </div>
-      <div
-        className="absolute inset-0 flex items-center justify-center transition-opacity"
-        style={{ opacity: 1 }}
-      >
+      <div className="absolute inset-0 flex items-center justify-center">
         <div
           className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-transform group-hover/play:scale-110"
-          style={{ backgroundColor: "oklch(0.68 0.21 47 / 0.9)" }}
+          style={{ backgroundColor: "oklch(0.76 0.17 72 / 0.9)" }}
         >
-          <Play size={16} className="text-white ml-0.5" fill="white" />
+          <Play
+            size={16}
+            className="ml-0.5"
+            fill="oklch(0.10 0.02 258)"
+            style={{ color: "oklch(0.10 0.02 258)" }}
+          />
         </div>
       </div>
       <div
         className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded text-xs font-mono"
         style={{
           backgroundColor: "oklch(0.0 0.0 0 / 0.75)",
-          color: "oklch(0.935 0.012 240)",
+          color: "oklch(0.94 0.010 240)",
         }}
       >
         VIDEO
@@ -71,7 +74,6 @@ function VideoThumbnail({
   );
 }
 
-// ─── Video preview modal ──────────────────────────────────────────────────────
 function VideoPreviewModal({
   item,
   open,
@@ -88,8 +90,8 @@ function VideoPreviewModal({
         data-ocid="media.video_preview.dialog"
         className="max-w-3xl w-full p-0 overflow-hidden"
         style={{
-          backgroundColor: "oklch(0.10 0.018 248)",
-          borderColor: "oklch(0.20 0.036 245)",
+          backgroundColor: "oklch(0.10 0.035 258)",
+          borderColor: "oklch(0.22 0.038 252)",
         }}
       >
         <DialogHeader className="p-4 pb-0">
@@ -99,7 +101,7 @@ function VideoPreviewModal({
           </DialogTitle>
         </DialogHeader>
         <div className="p-4 pt-3">
-          {/* biome-ignore lint/a11y/useMediaCaption: athlete highlight clips don't require captions */}
+          {/* biome-ignore lint/a11y/useMediaCaption: athlete highlight clips */}
           <video
             src={item.blob.getDirectURL()}
             controls
@@ -114,8 +116,8 @@ function VideoPreviewModal({
                   key={tag}
                   className="text-xs"
                   style={{
-                    backgroundColor: "oklch(0.68 0.21 47 / 0.15)",
-                    color: "oklch(0.75 0.18 47)",
+                    backgroundColor: "oklch(0.76 0.17 72 / 0.15)",
+                    color: "oklch(0.80 0.14 72)",
                     border: "none",
                   }}
                 >
@@ -130,8 +132,9 @@ function VideoPreviewModal({
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
 export default function MediaLibrary() {
+  const { identity, login } = useInternetIdentity();
+  const isAuthenticated = !!identity;
   const { data: items = [], isLoading } = useMediaItems();
   const addMedia = useAddMediaItem();
   const deleteMedia = useDeleteMediaItem();
@@ -151,6 +154,11 @@ export default function MediaLibrary() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!isAuthenticated) {
+      toast.error("Please log in to upload media.");
+      login();
+      return;
+    }
     setSelectedFile(file);
     setMediaType(
       file.type.startsWith("video") ? MediaType.video : MediaType.photo,
@@ -161,17 +169,18 @@ export default function MediaLibrary() {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile) return;
+    if (!selectedFile || !isAuthenticated) return;
     try {
-      setUploadProgress(10);
+      setUploadProgress(5);
       await addMedia.mutateAsync({
         mediaType,
         caption,
         tags,
         file: selectedFile,
+        onProgress: (pct) => setUploadProgress(pct),
       });
       setUploadProgress(100);
-      toast.success("Media uploaded!");
+      toast.success("Media uploaded successfully!");
       setTimeout(() => {
         setUploadOpen(false);
         setSelectedFile(null);
@@ -183,8 +192,9 @@ export default function MediaLibrary() {
         if (videoRef.current) videoRef.current.value = "";
         if (anyRef.current) anyRef.current.value = "";
       }, 600);
-    } catch {
-      toast.error("Failed to upload.");
+    } catch (err) {
+      console.error("Upload error:", err);
+      toast.error("Upload failed. Please try again.");
       setUploadProgress(0);
     }
   };
@@ -216,13 +226,17 @@ export default function MediaLibrary() {
     <div className="p-6">
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Media Library</h1>
+          <h1
+            className="text-2xl font-black uppercase tracking-wide"
+            style={{ color: "oklch(0.94 0.010 240)" }}
+          >
+            Media Library
+          </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Manage your highlight photos and videos.
+            Highlight photos and video clips for recruiter outreach.
           </p>
         </div>
         <div className="flex gap-2">
-          {/* Hidden inputs */}
           <input
             ref={photoRef}
             type="file"
@@ -248,21 +262,58 @@ export default function MediaLibrary() {
           <Button
             variant="outline"
             className="font-semibold border-border text-foreground hover:bg-primary/10"
-            onClick={() => photoRef.current?.click()}
+            onClick={() =>
+              isAuthenticated ? photoRef.current?.click() : login()
+            }
             data-ocid="media.photo_upload_button"
           >
             <ImageIcon size={15} className="mr-2" /> Upload Photo
           </Button>
           <Button
-            className="font-semibold"
-            style={{ backgroundColor: "oklch(0.68 0.21 47)", color: "#fff" }}
-            onClick={() => videoRef.current?.click()}
+            className="font-bold"
+            style={{
+              backgroundColor: "oklch(0.76 0.17 72)",
+              color: "oklch(0.10 0.02 258)",
+            }}
+            onClick={() =>
+              isAuthenticated ? videoRef.current?.click() : login()
+            }
             data-ocid="media.video_upload_button"
           >
             <Video size={15} className="mr-2" /> Upload Video
           </Button>
         </div>
       </div>
+
+      {!isAuthenticated && (
+        <div
+          className="mb-5 rounded-xl border p-4 flex items-center gap-3"
+          style={{
+            backgroundColor: "oklch(0.76 0.17 72 / 0.08)",
+            borderColor: "oklch(0.76 0.17 72 / 0.35)",
+          }}
+        >
+          <LogIn size={18} style={{ color: "oklch(0.76 0.17 72)" }} />
+          <p
+            className="text-sm flex-1"
+            style={{ color: "oklch(0.80 0.10 72)" }}
+          >
+            Log in to upload photos and videos to your media library.
+          </p>
+          <Button
+            size="sm"
+            className="font-bold text-xs"
+            style={{
+              backgroundColor: "oklch(0.76 0.17 72)",
+              color: "oklch(0.10 0.02 258)",
+            }}
+            onClick={() => login()}
+            data-ocid="media.login.button"
+          >
+            Log In
+          </Button>
+        </div>
+      )}
 
       {isLoading ? (
         <div
@@ -277,7 +328,7 @@ export default function MediaLibrary() {
           animate={{ opacity: 1 }}
           className="rounded-2xl border border-dashed border-border"
           data-ocid="media.empty_state"
-          style={{ backgroundColor: "oklch(0.13 0.018 248)" }}
+          style={{ backgroundColor: "oklch(0.13 0.035 254)" }}
         >
           <div className="py-16 flex flex-col items-center justify-center gap-6">
             <div className="flex gap-5">
@@ -292,9 +343,9 @@ export default function MediaLibrary() {
               </div>
               <div
                 className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                style={{ backgroundColor: "oklch(0.68 0.21 47 / 0.15)" }}
+                style={{ backgroundColor: "oklch(0.76 0.17 72 / 0.15)" }}
               >
-                <Video size={28} style={{ color: "oklch(0.72 0.18 47)" }} />
+                <Video size={28} style={{ color: "oklch(0.76 0.17 72)" }} />
               </div>
             </div>
             <div className="text-center">
@@ -310,18 +361,22 @@ export default function MediaLibrary() {
               <Button
                 variant="outline"
                 className="font-semibold"
-                onClick={() => photoRef.current?.click()}
+                onClick={() =>
+                  isAuthenticated ? photoRef.current?.click() : login()
+                }
                 data-ocid="media.dropzone"
               >
                 <ImageIcon size={15} className="mr-2" /> Add Photo
               </Button>
               <Button
-                className="font-semibold"
+                className="font-bold"
                 style={{
-                  backgroundColor: "oklch(0.68 0.21 47)",
-                  color: "#fff",
+                  backgroundColor: "oklch(0.76 0.17 72)",
+                  color: "oklch(0.10 0.02 258)",
                 }}
-                onClick={() => videoRef.current?.click()}
+                onClick={() =>
+                  isAuthenticated ? videoRef.current?.click() : login()
+                }
               >
                 <Video size={15} className="mr-2" /> Add Video Highlight
               </Button>
@@ -337,7 +392,9 @@ export default function MediaLibrary() {
           <button
             type="button"
             className="rounded-xl border-2 border-dashed border-border aspect-square flex flex-col items-center justify-center gap-2 hover:border-primary/50 transition-all cursor-pointer"
-            onClick={() => anyRef.current?.click()}
+            onClick={() =>
+              isAuthenticated ? anyRef.current?.click() : login()
+            }
             data-ocid="media.dropzone"
           >
             <Upload size={22} className="text-muted-foreground" />
@@ -352,7 +409,7 @@ export default function MediaLibrary() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: idx * 0.04 }}
               className="relative group rounded-xl overflow-hidden border border-border shadow-card aspect-square"
-              style={{ backgroundColor: "oklch(0.14 0.025 240)" }}
+              style={{ backgroundColor: "oklch(0.14 0.040 254)" }}
             >
               {item.mediaType === MediaType.photo ? (
                 <img
@@ -384,21 +441,6 @@ export default function MediaLibrary() {
                       {item.caption}
                     </p>
                   )}
-                  <div className="flex gap-1 flex-wrap mt-1">
-                    {item.tags.slice(0, 3).map((tag) => (
-                      <Badge
-                        key={tag}
-                        className="text-xs px-1.5 py-0"
-                        style={{
-                          backgroundColor: "oklch(0.21 0.038 240)",
-                          color: "oklch(0.69 0.025 240)",
-                          border: "none",
-                        }}
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
                 </div>
               </div>
 
@@ -408,12 +450,12 @@ export default function MediaLibrary() {
                 style={{
                   backgroundColor:
                     item.mediaType === MediaType.video
-                      ? "oklch(0.68 0.21 47 / 0.9)"
+                      ? "oklch(0.76 0.17 72 / 0.9)"
                       : "oklch(0.50 0.22 265 / 0.8)",
                 }}
               >
                 {item.mediaType === MediaType.video ? (
-                  <Video size={12} className="text-white" />
+                  <Video size={12} style={{ color: "oklch(0.10 0.02 258)" }} />
                 ) : (
                   <ImageIcon size={12} className="text-white" />
                 )}
@@ -428,8 +470,8 @@ export default function MediaLibrary() {
         <DialogContent
           data-ocid="media.dialog"
           style={{
-            backgroundColor: "oklch(0.14 0.025 240)",
-            borderColor: "oklch(0.21 0.038 240)",
+            backgroundColor: "oklch(0.15 0.040 254)",
+            borderColor: "oklch(0.22 0.038 252)",
           }}
         >
           <DialogHeader>
@@ -447,7 +489,7 @@ export default function MediaLibrary() {
             {selectedFile && (
               <div
                 className="flex items-center gap-2 text-sm text-foreground p-2 rounded-lg"
-                style={{ backgroundColor: "oklch(0.21 0.038 240)" }}
+                style={{ backgroundColor: "oklch(0.22 0.038 252)" }}
               >
                 {mediaType === MediaType.video ? (
                   <Video size={16} className="text-primary" />
@@ -484,13 +526,13 @@ export default function MediaLibrary() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Tags</Label>
+              <Label>Tags (press Enter to add)</Label>
               <Input
                 data-ocid="media.tags.input"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={addTag}
-                placeholder="Add tags and press Enter..."
+                placeholder="Add tags..."
               />
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-1">
@@ -499,8 +541,8 @@ export default function MediaLibrary() {
                       key={tag}
                       className="cursor-pointer text-xs"
                       style={{
-                        backgroundColor: "oklch(0.68 0.21 47 / 0.15)",
-                        color: "oklch(0.75 0.18 47)",
+                        backgroundColor: "oklch(0.76 0.17 72 / 0.15)",
+                        color: "oklch(0.80 0.14 72)",
                         border: "none",
                       }}
                       onClick={() =>
@@ -529,11 +571,24 @@ export default function MediaLibrary() {
               </div>
             )}
 
+            {addMedia.isError && (
+              <p
+                className="text-sm text-center"
+                data-ocid="media.error_state"
+                style={{ color: "oklch(0.65 0.22 25)" }}
+              >
+                Upload failed. Check your connection and try again.
+              </p>
+            )}
+
             <Button
               type="submit"
               data-ocid="media.submit_button"
-              className="w-full font-semibold"
-              style={{ backgroundColor: "oklch(0.68 0.21 47)", color: "#fff" }}
+              className="w-full font-bold"
+              style={{
+                backgroundColor: "oklch(0.76 0.17 72)",
+                color: "oklch(0.10 0.02 258)",
+              }}
               disabled={addMedia.isPending || !selectedFile}
             >
               {addMedia.isPending ? (

@@ -7,7 +7,6 @@ import Achievements from "./pages/Achievements";
 import ContentCalendar from "./pages/ContentCalendar";
 import ContentGenerator from "./pages/ContentGenerator";
 import Dashboard from "./pages/Dashboard";
-import Login from "./pages/Login";
 import MediaLibrary from "./pages/MediaLibrary";
 import Profile from "./pages/Profile";
 import ScholarshipTracker from "./pages/ScholarshipTracker";
@@ -24,7 +23,7 @@ export type Page =
 const queryClient = new QueryClient();
 
 function AppInner() {
-  const { identity, isInitializing } = useInternetIdentity();
+  const { isInitializing } = useInternetIdentity();
   const [currentPage, setCurrentPage] = useState<Page>("dashboard");
 
   if (isInitializing) {
@@ -33,10 +32,6 @@ function AppInner() {
         <div className="w-8 h-8 border-2 border-primary rounded-full border-t-transparent animate-spin" />
       </div>
     );
-  }
-
-  if (!identity) {
-    return <Login />;
   }
 
   const renderPage = () => {

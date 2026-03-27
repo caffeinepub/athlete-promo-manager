@@ -1,31 +1,31 @@
 # Athlete Promo Manager
 
 ## Current State
-Workspace is empty. Rebuilding from scratch.
+Workspace is empty -- previous version expired. Full rebuild required.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Athlete profile management (name, sport, position, school, graduation year, GPA, height/weight, contact info)
-- Achievement logger (game stats, awards, milestones for football and basketball)
-- AI Content Generator: auto-suggests 3 platform-specific posts from latest achievements; also accepts custom user prompts to generate targeted posts
-- Social media post formatting for Twitter/X (280 chars), Instagram (caption + hashtags), Facebook (long-form narrative)
-- Scholarship pipeline tracker (target schools, status, notes, deadlines)
-- Media library: photo and video highlight clip upload using blob-storage; inline video preview
-- Sample/demo data pre-loaded so the platform is visibly working on first load
-- Authorization with role-based access (athlete/admin)
-- All previous bug fixes: any authenticated user can mutate data; no duplicate posts on status update; proper sort comparators
+- Full rebuild with MaxPreps-inspired UI (dark navy theme, bold typography, sport card layouts, stat displays)
+- Real blob storage for photo and video uploads (no fake handlers)
+- Athlete profile page: name, sport (football/basketball), position, jersey number, school, grad year, GPA, height/weight
+- Achievements log: game stats per sport (passing yards/TDs for football; points/rebounds/assists for basketball), with date and opponent
+- Media Library: upload photos and video highlight clips, inline video preview, real persistence via blob-storage component
+- AI Content Generator: auto-generate 3 platform-specific posts (Twitter/X 280-char, Instagram caption+hashtags, Facebook long-form) from athlete data; custom prompt input for user-driven generation
+- Scholarship Pipeline: track target schools with status (Interested / Contacted / Official Visit / Offer / Committed)
+- Social Posts manager: list generated posts, mark as posted, copy to clipboard
+- Demo mode: pre-loaded sample athlete data visible before login
 
 ### Modify
-- N/A (fresh build)
+- Nothing (fresh build)
 
 ### Remove
-- N/A (fresh build)
+- Nothing (fresh build)
 
 ## Implementation Plan
-1. Select components: authorization, blob-storage
-2. Generate Motoko backend: athlete profile, achievements, generated posts (with platform + status), scholarship targets, media items
-3. Build React frontend with 5 tabs: Dashboard, Achievements, Content Generator, Scholarships, Media Library
-4. Seed frontend with demo athlete data (Marcus Johnson, #12 QB, sample achievements, pre-generated posts)
-5. Wire blob-storage for photo/video upload with inline preview
-6. Deploy draft
+1. Select `blob-storage` and `authorization` Caffeine components
+2. Generate Motoko backend: athlete profile CRUD, achievements CRUD, social posts CRUD, scholarship targets CRUD (blob storage handles media)
+3. Build frontend with MaxPreps aesthetic: dark navy (#0a1628) primary, gold/amber accents, bold sans-serif headers, card grid layouts, sidebar navigation with sport icons
+4. Wire blob-storage upload hooks for photos and videos
+5. Implement AI content generator using deterministic template logic (no external API needed) with platform-specific formatting
+6. Deploy

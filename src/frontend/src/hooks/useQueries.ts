@@ -141,14 +141,19 @@ export function useAddMediaItem() {
       caption,
       tags,
       file,
+      onProgress,
     }: {
       mediaType: MediaType;
       caption: string;
       tags: string[];
       file: File;
+      onProgress?: (pct: number) => void;
     }) => {
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      const blob = ExternalBlob.fromBytes(bytes);
+      const fileBytes = new Uint8Array(await file.arrayBuffer());
+      let blob = ExternalBlob.fromBytes(fileBytes);
+      if (onProgress) {
+        blob = blob.withUploadProgress(onProgress);
+      }
       return actor!.addMediaItem(mediaType, caption, tags, blob);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["media"] }),

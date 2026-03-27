@@ -200,7 +200,7 @@ actor {
     profile.get(user);
   };
 
-  // Achievements - any authenticated user can manage
+  // Achievements - any authenticated user can manage their own data
   public shared ({ caller }) func addAchievement(a : Achievement) : async Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Must be logged in to add achievements");
@@ -220,18 +220,39 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Must be logged in to delete achievements");
     };
-    achievements.remove(id);
-    achievementOwners.remove(id);
+    // Verify ownership
+    switch (achievementOwners.get(id)) {
+      case null {
+        Runtime.trap("Achievement not found");
+      };
+      case (?owner) {
+        if (owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+          Runtime.trap("Unauthorized: Can only delete your own achievements");
+        };
+        achievements.remove(id);
+        achievementOwners.remove(id);
+      };
+    };
   };
 
   public query ({ caller }) func getAchievements() : async [Achievement] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view achievements");
     };
-    achievements.values().toArray().sort(compareAchievement);
+    // Filter to only return caller's achievements
+    let allAchievements = achievements.entries();
+    let filtered = allAchievements.toArray().filter(
+      func((id, _)) : Bool {
+        switch (achievementOwners.get(id)) {
+          case null { false };
+          case (?owner) { owner == caller };
+        };
+      },
+    );
+    filtered.map<(Nat, Achievement), Achievement>(func((_, a)) : Achievement { a }).sort(compareAchievement);
   };
 
-  // Scholarship targets - any authenticated user can manage
+  // Scholarship targets - any authenticated user can manage their own data
   public shared ({ caller }) func addScholarshipTarget(s : ScholarshipTarget) : async Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Must be logged in to add scholarship targets");
@@ -251,18 +272,39 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Must be logged in to delete scholarship targets");
     };
-    scholarshipTargets.remove(id);
-    scholarshipOwners.remove(id);
+    // Verify ownership
+    switch (scholarshipOwners.get(id)) {
+      case null {
+        Runtime.trap("Scholarship target not found");
+      };
+      case (?owner) {
+        if (owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+          Runtime.trap("Unauthorized: Can only delete your own scholarship targets");
+        };
+        scholarshipTargets.remove(id);
+        scholarshipOwners.remove(id);
+      };
+    };
   };
 
   public query ({ caller }) func getScholarshipTargets() : async [ScholarshipTarget] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view scholarship targets");
     };
-    scholarshipTargets.values().toArray().sort(compareScholarshipTarget);
+    // Filter to only return caller's scholarship targets
+    let allTargets = scholarshipTargets.entries();
+    let filtered = allTargets.toArray().filter(
+      func((id, _)) : Bool {
+        switch (scholarshipOwners.get(id)) {
+          case null { false };
+          case (?owner) { owner == caller };
+        };
+      },
+    );
+    filtered.map<(Nat, ScholarshipTarget), ScholarshipTarget>(func((_, s)) : ScholarshipTarget { s }).sort(compareScholarshipTarget);
   };
 
-  // Content posts - any authenticated user can manage
+  // Content posts - any authenticated user can manage their own data
   public shared ({ caller }) func addContentPost(p : ContentPost) : async Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Must be logged in to add content posts");
@@ -282,18 +324,39 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Must be logged in to delete content posts");
     };
-    contentPosts.remove(id);
-    postOwners.remove(id);
+    // Verify ownership
+    switch (postOwners.get(id)) {
+      case null {
+        Runtime.trap("Content post not found");
+      };
+      case (?owner) {
+        if (owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+          Runtime.trap("Unauthorized: Can only delete your own content posts");
+        };
+        contentPosts.remove(id);
+        postOwners.remove(id);
+      };
+    };
   };
 
   public query ({ caller }) func getContentPosts() : async [ContentPost] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view content posts");
     };
-    contentPosts.values().toArray().sort(compareContentPost);
+    // Filter to only return caller's content posts
+    let allPosts = contentPosts.entries();
+    let filtered = allPosts.toArray().filter(
+      func((id, _)) : Bool {
+        switch (postOwners.get(id)) {
+          case null { false };
+          case (?owner) { owner == caller };
+        };
+      },
+    );
+    filtered.map<(Nat, ContentPost), ContentPost>(func((_, p)) : ContentPost { p }).sort(compareContentPost);
   };
 
-  // Media items - any authenticated user can manage
+  // Media items - any authenticated user can manage their own data
   public shared ({ caller }) func addMediaItem(mediaType : MediaType, caption : Text, tags : [Text], blob : Storage.ExternalBlob) : async Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Must be logged in to add media items");
@@ -317,14 +380,35 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Must be logged in to delete media items");
     };
-    mediaItems.remove(id);
-    mediaOwners.remove(id);
+    // Verify ownership
+    switch (mediaOwners.get(id)) {
+      case null {
+        Runtime.trap("Media item not found");
+      };
+      case (?owner) {
+        if (owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+          Runtime.trap("Unauthorized: Can only delete your own media items");
+        };
+        mediaItems.remove(id);
+        mediaOwners.remove(id);
+      };
+    };
   };
 
   public query ({ caller }) func getMediaItems() : async [MediaItem] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view media items");
     };
-    mediaItems.values().toArray().sort(compareMediaItem);
+    // Filter to only return caller's media items
+    let allMedia = mediaItems.entries();
+    let filtered = allMedia.toArray().filter(
+      func((id, _)) : Bool {
+        switch (mediaOwners.get(id)) {
+          case null { false };
+          case (?owner) { owner == caller };
+        };
+      },
+    );
+    filtered.map<(Nat, MediaItem), MediaItem>(func((_, m)) : MediaItem { m }).sort(compareMediaItem);
   };
 };
